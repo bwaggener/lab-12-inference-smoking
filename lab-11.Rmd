@@ -1,5 +1,5 @@
 ---
-title: "Lab 12 - Smoking during pregnancy"
+title: "Lab 11 - Smoking during pregnancy"
 author: "Insert your name here"
 date: "Insert date here"
 output: github_document
