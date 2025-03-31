@@ -1,3 +1,3 @@
-# lab-11-inference-smoking
+# lab-12-inference-smoking
 
-Materials for lab 11
+Materials for lab 12
