@@ -48,7 +48,10 @@ obs_mean <- ncbirths_white %>%
 the criteria for conducting simulation-based inference are satisfied. The data has a lot of observations (1000), they are randomly sampled, and these observations are independent of each other.
 
 ##Exercise 4
+H0:μ=7.43 poundsH0:μ=7.43 pounds.
+HA:μ≠7.43 poundsHA:μ≠7.43 pounds.
 
+There were 0 bootstrapped samples with the null distribution wiht a mean at or lower than 7.25 (p < .05). This means that it is highly unlikely that the mean birth weight in 1995 was the same as it is now, they are significantly different. 
 
 ```{r nulldist}
 sim_ncbirth_white <- ncbirths_white %>%
@@ -72,16 +75,69 @@ null_dist <- sim_ncbirth_white %>%
 ```{r plot}
 ggplot(null_dist, mapping = aes(x = stat))+
   geom_histogram(binwidth = .01)+
+  geom_vline(xintercept = 7.25, color = "red", linetype = "dashed") +
   labs(
     title = "Null Distribution",
     x = "Sample Mean Birth Weight (lbs)",
-       y = "Count")
+       y = "Count")+
+  theme_classic()
 ```
 
+```{r pvalue}
+null_dist %>%
+  filter(stat <= (7.25)) %>%
+  summarize(p_value = n()/nrow(null_dist))
+```
 ```{r pvalue}
 p_value <- null_dist %>%
   get_p_value(obs_stat = obs_mean_value, direction = "two_sided")
 
 p_value
 ```
-Add exercise headings as needed.
+
+
+##Exercise 5
+
+This plot shows that smoking reduces the childs weight compared to not smoking. Also there seems to be a lot of variability in the non smoking data.
+```{r boxplot}
+
+
+ggplot(ncbirths, aes(x = habit, y = weight)) +
+  geom_boxplot()
+```
+
+##Exercise 6
+```{r cleaning}
+ncbirths_clean <- ncbirths %>%
+  filter(!is.na(habit)) %>%
+  filter(!is.na(weight)) 
+```
+
+##Exercise 7
+```{r diff}
+ncbirths_clean %>%
+  group_by(habit) %>%
+  summarize(mean_weight = mean(weight))
+```
+
+##Exercise 8
+H0:weight of smoker = weight of nonsmoker
+HA: weight of smoker ≠ weight of nonsmoker
+
+##Exercise 9
+
+
+```{r mean_diff}
+obs_diff_smok <- ncbirths_clean %>%
+  group_by(habit) %>%
+  summarize(mean_weight = mean(weight, na.rm = TRUE)) %>%
+  spread(key = habit, value = mean_weight) %>%  # Spread the data into two columns (smoker vs nonsmoker)
+  mutate(diff = nonsmoker - smoker) 
+```
+
+```{r null_dist}
+sim_ncbirth_smok <- ncbirths_clean %>%
+  specify(response = weight, x = habit) %>%   # Specify the response and predictor variable
+  generate(reps = 100, type = "bootstrap") %>% # Generate 1000 bootstrap samples
+  calculate(stat = "mean") 
+```
