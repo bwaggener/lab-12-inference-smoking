@@ -70,10 +70,11 @@ null_dist <- sim_ncbirth_white %>%
 ```
 
 ```{r plot}
-visualize(null_dist) +
-  geom_vline(xintercept = obs_mean_value, color = "red") +
-  labs(title = "Null Distribution Centered at 7.43",
-       x = "Sample Mean Birth Weight (lbs)",
+ggplot(null_dist, mapping = aes(x = stat))+
+  geom_histogram(binwidth = .01)+
+  labs(
+    title = "Null Distribution",
+    x = "Sample Mean Birth Weight (lbs)",
        y = "Count")
 ```
 
