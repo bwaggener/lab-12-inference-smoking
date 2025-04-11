@@ -13,15 +13,74 @@ library(tidymodels)
 library(openintro)
 ```
 
+setting a seed for reproducibility 
+```{r seed}
+set.seed(04102025)
+```
+
+loading data
+```{r get data}
+ncbirths <- openintro::ncbirths
+```
+
+
+
 ### Exercise 1
 
-Remove this text, and add your answer for Exercise 1 here.
-Add code chunks as needed.
-Don't forget to label your code chunk.
-Do not use spaces in code chunk labels.
+cases are individual births such that it includes information aboout the child, the mother, and the father. There are 1000 cases in this sample.
 
 ### Exercise 2
 
-...
+filter to keep only the white mothers
 
+Mean weight of babies from white moms : 7.25  
+```{r filter_white}
+ncbirths_white <- ncbirths %>%
+  filter(whitemom == "white")
+
+summary(ncbirths_white)
+
+obs_mean <- ncbirths_white %>%
+  summarize(mean_weight = mean(weight)) 
+```
+
+### Exercise 3
+the criteria for conducting simulation-based inference are satisfied. The data has a lot of observations (1000), they are randomly sampled, and these observations are independent of each other.
+
+##Exercise 4
+
+
+```{r nulldist}
+sim_ncbirth_white <- ncbirths_white %>%
+  specify(response = weight) %>%
+  generate(reps = 100, type = "bootstrap") %>%
+  calculate(stat = "mean")
+summary(sim_ncbirth_white)
+```
+```{r shift}
+
+obs_mean_value <- obs_mean$mean_weight
+
+# Calculate shift value
+shift_amount <- obs_mean_value - 7.43
+
+# Shift bootstrap distribution
+null_dist <- sim_ncbirth_white %>%
+  mutate(stat = stat - shift_amount)
+```
+
+```{r plot}
+visualize(null_dist) +
+  geom_vline(xintercept = obs_mean_value, color = "red") +
+  labs(title = "Null Distribution Centered at 7.43",
+       x = "Sample Mean Birth Weight (lbs)",
+       y = "Count")
+```
+
+```{r pvalue}
+p_value <- null_dist %>%
+  get_p_value(obs_stat = obs_mean_value, direction = "two_sided")
+
+p_value
+```
 Add exercise headings as needed.
