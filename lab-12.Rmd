@@ -83,7 +83,7 @@ ggplot(null_dist, mapping = aes(x = stat))+
   theme_classic()
 ```
 
-```{r pvalue}
+```{r pvalue1}
 null_dist %>%
   filter(stat <= (7.25)) %>%
   summarize(p_value = n()/nrow(null_dist))
@@ -117,27 +117,101 @@ ncbirths_clean <- ncbirths %>%
 ```{r diff}
 ncbirths_clean %>%
   group_by(habit) %>%
-  summarize(mean_weight = mean(weight))
+  summarize(mean_weight = mean(weight),
+  sd_weight = sd(weight))
 ```
 
 ##Exercise 8
-H0:weight of smoker = weight of nonsmoker
-HA: weight of smoker ≠ weight of nonsmoker
+H0:weight of smoker = weight of nonsmoker (mother)
+HA: weight of smoker ≠ weight of nonsmoker (mother)
+
+
 
 ##Exercise 9
 
+run a t test to evaluate the hypothesis
 
-```{r mean_diff}
-obs_diff_smok <- ncbirths_clean %>%
+```{r t_test}
+t.test(weight ~ habit, data = ncbirths_clean)
+
+
+```
+these are statistically significant
+
+#Exercise 10
+
+make confidence intervals for each group
+
+```{r ci}
+ncbirths_clean %>%
   group_by(habit) %>%
-  summarize(mean_weight = mean(weight, na.rm = TRUE)) %>%
-  spread(key = habit, value = mean_weight) %>%  # Spread the data into two columns (smoker vs nonsmoker)
-  mutate(diff = nonsmoker - smoker) 
+  summarize(mean_weight = mean(weight),
+            sd_weight = sd(weight),
+            n = n()) %>%
+  mutate(se = sd_weight/sqrt(n),
+         lower_ci = mean_weight - qt(0.975, df = n-1) * se,
+         upper_ci = mean_weight + qt(0.975, df = n-1) * se)
 ```
 
-```{r null_dist}
-sim_ncbirth_smok <- ncbirths_clean %>%
-  specify(response = weight, x = habit) %>%   # Specify the response and predictor variable
-  generate(reps = 100, type = "bootstrap") %>% # Generate 1000 bootstrap samples
-  calculate(stat = "mean") 
+Yippie
+  
+#Exercise 11
+
+"First, a non-inference task: Determine the age cutoff for younger and mature mothers. Use a method of your choice, and explain how your method works."
+
+the cuttoff for younger moms is at 34 and for mature moms is 50
+I just got the min and max of the age ranges after grouping them by the mature variable
+
+```{r age_cutoff}
+ncbirths_clean %>%
+  group_by(mature) %>%
+  summarize(
+    mean_mage = mean(mage, na.rm = TRUE),
+    min_mage = min(mage, na.rm = TRUE),
+    max_mage = max(mage, na.rm = TRUE)
+  )
 ```
+
+#Exercise 12
+"Conduct a hypothesis test evaluating whether the proportion of low birth weight babies is higher for mature mothers. Use α = 0.05."
+
+The null hypothesis is that there is no difference between the proportion of low birth weights between mature and younger mothers
+The alternative hypothesis is that there is a difference between the proportion of low birth weights between mature and younger mothers.
+
+(use lowbirthweight variable)
+
+
+
+```{r proportions}
+ncbirths_clean %>%
+  count(mature, lowbirthweight) %>%
+  group_by(mature) %>%
+  mutate(p_hat = n / sum(n))
+
+```
+
+```{r proportions_test}
+null_dist <- ncbirths_clean %>%
+  specify(response = lowbirthweight, 
+          explanatory = mature, 
+          success = "low") %>%
+  hypothesize(null = "independence") %>%
+  generate(100, type = "permute") %>%
+calculate(stat = "diff in props", order = c("mature mom", "younger mom"))
+
+head(null_dist)
+
+observed_stat <- ncbirths_clean %>%
+  group_by(mature) %>%
+  summarize(prop_low_birth_weight = mean(lowbirthweight == "low")) %>%
+  spread(mature, prop_low_birth_weight) %>%
+  mutate(diff_in_props = `mature mom` - `younger mom`) %>%
+  pull(diff_in_props)
+
+observed_stat
+
+```
+
+null hypothesis is rejected, meaning that the proportion of low birth weights are different between younger and mature moms with mature moms having a significantly greater amount of low birth weights.
+
+#Exercise 13

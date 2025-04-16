@@ -121,7 +121,13 @@ the criteria for conducting simulation-based inference are satisfied.
 The data has a lot of observations (1000), they are randomly sampled,
 and these observations are independent of each other.
 
-\##Exercise 4
+\##Exercise 4 H0:μ=7.43 poundsH0:μ=7.43 pounds. HA:μ≠7.43
+poundsHA:μ≠7.43 pounds.
+
+There were 0 bootstrapped samples with the null distribution wiht a mean
+at or lower than 7.25 (p \< .05). This means that it is highly unlikely
+that the mean birth weight in 1995 was the same as it is now, they are
+significantly different.
 
 ``` r
 sim_ncbirth_white <- ncbirths_white %>%
@@ -151,14 +157,28 @@ null_dist <- sim_ncbirth_white %>%
 ```
 
 ``` r
-visualize(null_dist) +
-  geom_vline(xintercept = obs_mean_value, color = "red") +
-  labs(title = "Null Distribution Centered at 7.43",
-       x = "Sample Mean Birth Weight (lbs)",
-       y = "Count")
+ggplot(null_dist, mapping = aes(x = stat))+
+  geom_histogram(binwidth = .01)+
+  geom_vline(xintercept = 7.25, color = "red", linetype = "dashed") +
+  labs(
+    title = "Null Distribution",
+    x = "Sample Mean Birth Weight (lbs)",
+       y = "Count")+
+  theme_classic()
 ```
 
 ![](lab-12_files/figure-gfm/plot-1.png)<!-- -->
+
+``` r
+null_dist %>%
+  filter(stat <= (7.25)) %>%
+  summarize(p_value = n()/nrow(null_dist))
+```
+
+    ## # A tibble: 1 × 1
+    ##   p_value
+    ##     <dbl>
+    ## 1       0
 
 ``` r
 p_value <- null_dist %>%
@@ -178,4 +198,183 @@ p_value
     ##     <dbl>
     ## 1       0
 
-Add exercise headings as needed.
+\##Exercise 5
+
+This plot shows that smoking reduces the childs weight compared to not
+smoking. Also there seems to be a lot of variability in the non smoking
+data.
+
+``` r
+ggplot(ncbirths, aes(x = habit, y = weight)) +
+  geom_boxplot()
+```
+
+![](lab-12_files/figure-gfm/boxplot-1.png)<!-- -->
+
+\##Exercise 6
+
+``` r
+ncbirths_clean <- ncbirths %>%
+  filter(!is.na(habit)) %>%
+  filter(!is.na(weight)) 
+```
+
+\##Exercise 7
+
+``` r
+ncbirths_clean %>%
+  group_by(habit) %>%
+  summarize(mean_weight = mean(weight),
+  sd_weight = sd(weight))
+```
+
+    ## # A tibble: 2 × 3
+    ##   habit     mean_weight sd_weight
+    ##   <fct>           <dbl>     <dbl>
+    ## 1 nonsmoker        7.14      1.52
+    ## 2 smoker           6.83      1.39
+
+\##Exercise 8 H0:weight of smoker = weight of nonsmoker (mother) HA:
+weight of smoker ≠ weight of nonsmoker (mother)
+
+\##Exercise 9
+
+run a t test to evaluate the hypothesis
+
+``` r
+t.test(weight ~ habit, data = ncbirths_clean)
+```
+
+    ## 
+    ##  Welch Two Sample t-test
+    ## 
+    ## data:  weight by habit
+    ## t = 2.359, df = 171.32, p-value = 0.01945
+    ## alternative hypothesis: true difference in means between group nonsmoker and group smoker is not equal to 0
+    ## 95 percent confidence interval:
+    ##  0.05151165 0.57957328
+    ## sample estimates:
+    ## mean in group nonsmoker    mean in group smoker 
+    ##                7.144273                6.828730
+
+these are statistically significant
+
+\#Exercise 10
+
+make confidence intervals for each group
+
+``` r
+ncbirths_clean %>%
+  group_by(habit) %>%
+  summarize(mean_weight = mean(weight),
+            sd_weight = sd(weight),
+            n = n()) %>%
+  mutate(se = sd_weight/sqrt(n),
+         lower_ci = mean_weight - qt(0.975, df = n-1) * se,
+         upper_ci = mean_weight + qt(0.975, df = n-1) * se)
+```
+
+    ## # A tibble: 2 × 7
+    ##   habit     mean_weight sd_weight     n     se lower_ci upper_ci
+    ##   <fct>           <dbl>     <dbl> <int>  <dbl>    <dbl>    <dbl>
+    ## 1 nonsmoker        7.14      1.52   873 0.0514     7.04     7.25
+    ## 2 smoker           6.83      1.39   126 0.123      6.58     7.07
+
+Yippie
+
+\#Exercise 11
+
+“First, a non-inference task: Determine the age cutoff for younger and
+mature mothers. Use a method of your choice, and explain how your method
+works.”
+
+the cuttoff for younger moms is at 34 and for mature moms is 50 I just
+got the min and max of the age ranges after grouping them by the mature
+variable
+
+``` r
+ncbirths_clean %>%
+  group_by(mature) %>%
+  summarize(
+    mean_mage = mean(mage, na.rm = TRUE),
+    min_mage = min(mage, na.rm = TRUE),
+    max_mage = max(mage, na.rm = TRUE)
+  )
+```
+
+    ## # A tibble: 2 × 4
+    ##   mature      mean_mage min_mage max_mage
+    ##   <fct>           <dbl>    <int>    <int>
+    ## 1 mature mom       37.2       35       50
+    ## 2 younger mom      25.4       13       34
+
+\#Exercise 12 “Conduct a hypothesis test evaluating whether the
+proportion of low birth weight babies is higher for mature mothers. Use
+α = 0.05.”
+
+The null hypothesis is that there is no difference between the
+proportion of low birth weights between mature and younger mothers The
+alternative hypothesis is that there is a difference between the
+proportion of low birth weights between mature and younger mothers.
+
+(use lowbirthweight variable)
+
+``` r
+ncbirths_clean %>%
+  count(mature, lowbirthweight) %>%
+  group_by(mature) %>%
+  mutate(p_hat = n / sum(n))
+```
+
+    ## # A tibble: 4 × 4
+    ## # Groups:   mature [2]
+    ##   mature      lowbirthweight     n p_hat
+    ##   <fct>       <fct>          <int> <dbl>
+    ## 1 mature mom  low               17 0.129
+    ## 2 mature mom  not low          115 0.871
+    ## 3 younger mom low               93 0.107
+    ## 4 younger mom not low          774 0.893
+
+``` r
+null_dist <- ncbirths_clean %>%
+  specify(response = lowbirthweight, 
+          explanatory = mature, 
+          success = "low") %>%
+  hypothesize(null = "independence") %>%
+  generate(100, type = "permute") %>%
+calculate(stat = "diff in props", order = c("mature mom", "younger mom"))
+
+head(null_dist)
+```
+
+    ## Response: lowbirthweight (factor)
+    ## Explanatory: mature (factor)
+    ## Null Hypothesis: independence
+    ## # A tibble: 6 × 2
+    ##   replicate     stat
+    ##       <int>    <dbl>
+    ## 1         1  0.0390 
+    ## 2         2 -0.00467
+    ## 3         3  0.00406
+    ## 4         4  0.00406
+    ## 5         5 -0.00467
+    ## 6         6 -0.0134
+
+``` r
+observed_stat <- ncbirths_clean %>%
+  group_by(mature) %>%
+  summarize(prop_low_birth_weight = mean(lowbirthweight == "low")) %>%
+  spread(mature, prop_low_birth_weight) %>%
+  mutate(diff_in_props = `mature mom` - `younger mom`) %>%
+  pull(diff_in_props)
+
+observed_stat
+```
+
+    ## [1] 0.02152144
+
+null hypothesis is rejected, meaning that the proportion of low birth
+weights are different between younger and mature moms with mature moms
+having a significantly greater amount of low birth weights.
+
+\#Exercise 13
